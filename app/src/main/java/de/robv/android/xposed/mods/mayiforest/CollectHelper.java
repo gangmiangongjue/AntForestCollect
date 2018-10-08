@@ -136,9 +136,9 @@ public class CollectHelper {
             Field hF = viewHolder.getClass().getDeclaredField("h");
             hF.setAccessible(true);
             curH5PageImpl = hF.get(viewHolder);
-            Class<?> h5PageClazz = loader.loadClass("com.alipay.mobile.h5container.api.H5Page");
-            Class<?> jsonClazz = loader.loadClass("com.alibaba.fastjson.JSONObject");
-            Class<?> rpcClazz = loader.loadClass("com.alipay.mobile.nebulabiz.rpc.H5RpcUtil");
+            Class<?> h5PageClazz = AntCollect.h5pageClass;
+            Class<?> jsonClazz = AntCollect.jsonObjectClass;
+            Class<?> rpcClazz = AntCollect.h5RpcUtilClass;
             if (curH5PageImpl !=null){
                 result = rpcClazz.getMethod("rpcCall",String.class,String.class,String.class,boolean.class,jsonClazz,String.class,boolean.class,h5PageClazz,int.class,String.class,boolean.class,int.class);
                 Log.d(TAG, "getRpcCallMethod success ");

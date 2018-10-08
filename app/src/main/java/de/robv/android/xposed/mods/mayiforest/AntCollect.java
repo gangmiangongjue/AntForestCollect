@@ -15,10 +15,15 @@ public class AntCollect implements IXposedHookLoadPackage {
     private final static String TAG = AntCollect.class.getSimpleName();
     private final static String ALI_PACKAGE = "com.eg.android.AlipayGphone";
     private final static String HOOK_CLASS_LOG = "com.alipay.mobile.nebula.util.H5Log";
+
     private final static String HOOK_CLASS_RPC = "com.alipay.mobile.nebulabiz.rpc.H5RpcUtil";
+    private final static String HOOK_CLASS_H5FRAGMENT = "com.alipay.mobile.nebulacore.ui.H5Fragment";
+    private final static String HOOK_CLASS_H5FRAGMENTMANAGER = "com.alipay.mobile.nebulacore.ui.H5FragmentManager";
+    public final static String HOOK_CLASS_H5PAGE = "com.alipay.mobile.h5container.api.H5Page";
+    private final static String HOOK_CLASS_JSONOBJECT = "com.alibaba.fastjson.JSONObject";
 
 
-    private Class<?> h5FragmentManagerClass,h5FragmentClazz;
+    public Class<?> h5FragmentManagerClass,h5FragmentClazz,h5pageClass,jsonObjectClass,h5RpcUtilClass;
 
     private boolean finded = false;
     @Override
@@ -31,14 +36,27 @@ public class AntCollect implements IXposedHookLoadPackage {
                 super.afterHookedMethod(param);
                 if (param.hasThrowable()) return;
                 Class<?> clazz = (Class<?>) param.getResult();
-                if (clazz.getName().equals("com.alipay.mobile.nebulacore.ui.H5Fragment")){
-                    h5FragmentClazz = clazz;
+                switch (clazz.getName()){
+                    case HOOK_CLASS_H5FRAGMENT:
+                        h5FragmentClazz = clazz;
+                        break;
+                    case HOOK_CLASS_H5FRAGMENTMANAGER:
+                        h5FragmentManagerClass = clazz;
+                        break;
+                    case HOOK_CLASS_H5PAGE:
+                        h5pageClass = clazz;
+                        break;
+                    case HOOK_CLASS_JSONOBJECT:
+                        jsonObjectClass = clazz;
+                        break;
+                    case HOOK_CLASS_RPC:
+                        h5RpcUtilClass = clazz;
+                        break;
+                        default:
+                            break;
                 }
-                if (clazz.getName().equals("com.alipay.mobile.nebulacore.ui.H5FragmentManager")){
-                    h5FragmentManagerClass = clazz;
-                }
-
-                if (h5FragmentClazz !=null && h5FragmentManagerClass!=null && !finded){
+                //获取必要的类，来获取界面fragment的实例，以便获取最终需要rcpcall需要的H5PageImpl参数
+                if (h5FragmentClazz !=null && h5FragmentManagerClass!=null && h5pageClass!=null && jsonObjectClass!=null && h5RpcUtilClass !=null && !finded){
                     finded = true;
                     Log.d(TAG, "afterHookedMethod find success");
                     XposedHelpers.findAndHookMethod(h5FragmentManagerClass, "pushFragment", h5FragmentClazz, boolean.class, Bundle.class, boolean.class, boolean.class, new XC_MethodHook() {
@@ -50,6 +68,8 @@ public class AntCollect implements IXposedHookLoadPackage {
                         }
                     });
                 }
+
+                //每次call rpc都会回调该方法，使用这个获得的response来获取需要的朋友和自己的能量信息
                 if (clazz.getName().equals(HOOK_CLASS_RPC)){
                     Log.d(TAG, "find class name: "+clazz.getName());
                     Method[] m = clazz.getDeclaredMethods();
