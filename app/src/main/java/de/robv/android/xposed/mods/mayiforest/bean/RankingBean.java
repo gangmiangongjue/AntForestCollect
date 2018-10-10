@@ -3,27 +3,29 @@ package de.robv.android.xposed.mods.mayiforest.bean;
 import java.util.ArrayList;
 
 public class RankingBean {
-    private ArrayList<FriendRankInfo> friendRankBeans = new ArrayList<>();
-    private String hasMore;
+    private ArrayList<FriendRankInfo> friendRanking = new ArrayList<>();
+    private boolean hasMore;
     private long queryTimestamp;
     private String resultCode;
     private String resultDesc;
     private boolean retriable;
     private boolean success;
+    private FriendRankInfo myself;
+    private String nextStartPoint;
 
     public ArrayList<FriendRankInfo> getFriendRankInfos() {
-        return friendRankBeans;
+        return friendRanking;
     }
 
     public void setFriendRankInfos(ArrayList<FriendRankInfo> friendRankBeans) {
-        this.friendRankBeans = friendRankBeans;
+        this.friendRanking = friendRankBeans;
     }
 
-    public String getHasMore() {
+    public boolean getHasMore() {
         return hasMore;
     }
 
-    public void setHasMore(String hasMore) {
+    public void setHasMore(boolean hasMore) {
         this.hasMore = hasMore;
     }
 
@@ -69,6 +71,22 @@ public class RankingBean {
 
     @Override
     public String toString() {
-        return "hasMore:"+hasMore+" queryTimestamp:"+queryTimestamp+" resultCode:"+resultCode+" resultDesc:"+resultDesc+" retriable:"+retriable+" success:"+success+" friendRankBeans size:"+friendRankBeans.size();
+        return "hasMore:"+hasMore+" queryTimestamp:"+queryTimestamp+" resultCode:"+resultCode+" resultDesc:"+resultDesc+" retriable:"+retriable+" success:"+success+" friendRankBeans size:"+friendRanking.size();
+    }
+
+    public FriendRankInfo getMyself() {
+        return myself;
+    }
+
+    public void setMyself(FriendRankInfo myself) {
+        this.myself = myself;
+    }
+
+    public String getNextStartPoint() {
+        return nextStartPoint;
+    }
+
+    public void setNextStartPoint(String nextStartPoint) {
+        this.nextStartPoint = nextStartPoint;
     }
 }

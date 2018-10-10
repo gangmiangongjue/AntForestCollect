@@ -27,6 +27,7 @@ public class CollectHelper {
     private static Gson gson = new Gson();
 
     public static void autoGetCanCollectUserIdList(String response){
+        Log.d(TAG, "autoGetCanCollectUserIdList: ");
             if (isWebViewRefresh){
                 return;
             }
@@ -56,6 +57,7 @@ public class CollectHelper {
      * 发送朋友排名请求
      * */
     private static void rpcCallFriendRankList(){
+        Log.d(TAG, "rpcCallFriendRankList: ");
         try{
             Method rpcCallMethod = getRpcCallMethod();
             if (rpcCallMethod ==null) return;
@@ -73,9 +75,10 @@ public class CollectHelper {
     }
 
     /**
-     *
+     * 根据指定userid获取该用户的能量信息
      * */
     private static void rpcCallCanCollectEnergy(String userId){
+        Log.d(TAG, "rpcCallCanCollectEnergy useid: "+userId+" size:"+friendRankUserIdList.size());
         try{
             Method rpcCallMethod = getRpcCallMethod();
             if (rpcCallMethod ==null) return;
@@ -123,26 +126,25 @@ public class CollectHelper {
      * 如果当前response是排名的（包括刚进入和后来刷新的），解析并把所有的userid保存起来
      * */
     public static boolean isRankList(String response){
-        Log.d(TAG, "isRankList: "+response);
-        if (response.contains(FIELD_FRIEND_RANK)){
-            RankingBean rankingBean = gson.fromJson(response,new TypeToken<RankingBean>(){}.getType());
-            for (FriendRankInfo rankInfo :rankingBean.getFriendRankInfos()){
-                friendRankUserIdList.add(rankInfo.getUserId());
-            }
-
-            Log.d(TAG, "isRankList ranking bean: "+rankingBean);
-        }
-        return false;
+//        Log.d(TAG, "isRankList: "+response);
+        return response.contains(FIELD_FRIEND_RANK);
     }
-
+    /**
+     * 用户的详细能量情况
+     * */
     public static boolean isUserDetail(String response){
-//        Log.d(TAG, "isUserDetail: "+response);
+        Log.d(TAG, "isUserDetail: "+response);
         return false;
     }
 
     private static boolean parseFriendRankPageDataResponse(String response){
-        Log.d(TAG, "parseFriendRankPageDataResponse: "+response);
-        return false;
+        RankingBean rankingBean = gson.fromJson(response,new TypeToken<RankingBean>(){}.getType());
+        for (FriendRankInfo rankInfo :rankingBean.getFriendRankInfos()){
+            if (!friendRankUserIdList.contains(rankInfo.getUserId()))
+            friendRankUserIdList.add(rankInfo.getUserId());
+        }
+        Log.d(TAG, "parseFriendRankPageDataResponse: "+rankingBean);
+        return !rankingBean.getHasMore();
     }
 
     private static boolean parseCollectEnergyResponse(String response){

@@ -1,9 +1,14 @@
 package de.robv.android.xposed.mods.mayiforest;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
@@ -26,9 +31,59 @@ public class AntCollect implements IXposedHookLoadPackage {
     public static Class<?> h5FragmentManagerClass, h5FragmentClazz, h5pageClass, jsonObjectClass, h5RpcUtilClass;
 
     private boolean finded = false;
+    private ArrayList<Object> responses = new ArrayList<>();
+
+    private boolean isInit = true;
+
+    private Handler handler ;
+
+    private void handleResponse () throws Throwable{
+        Log.d(TAG, "handleResponse");
+        for (Object resp : responses){
+            if (resp != null) {
+                Method method = resp.getClass().getMethod("getResponse", new Class<?>[]{});
+                String response = (String) method.invoke(resp, new Object[]{});
+                Log.d(TAG, "afterHookedMethod response: " + response);
+                if (CollectHelper.isRankList(response)) {
+                    CollectHelper.autoGetCanCollectUserIdList(response);
+                }
+                if (CollectHelper.isUserDetail(response)) {
+                    CollectHelper.autoGetCanCollectBubbleIdList(response);
+                }
+            }
+        }
+        responses.clear();
+    }
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
+        if (isInit){
+            isInit = false;
+            HandlerThread handlerThread = new HandlerThread("sxf");
+            handler = new Handler(handlerThread.getLooper(),new Handler.Callback() {
+                @Override
+                public boolean handleMessage(Message msg) {
+                    switch (msg.what){
+                        case 0x123:
+                            responses.add(msg.obj);
+                            break;
+                        case 0x124://signal of fragment is loaded properly
+                            responses.add(msg.obj);
+                            try {
+                                handleResponse();
+                            } catch (Throwable throwable) {
+                                throwable.printStackTrace();
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    return false;
+                }
+            });
+            handlerThread.start();
+        }
+
         if (!lpparam.packageName.contains(ALI_PACKAGE))
             return;
         XposedHelpers.findAndHookMethod(ClassLoader.class, "loadClass", String.class, new XC_MethodHook() {
@@ -58,13 +113,13 @@ public class AntCollect implements IXposedHookLoadPackage {
                 }
                 //获取必要的类，来获取界面fragment的实例，以便获取最终需要rcpcall需要的H5PageImpl参数
                 if (h5FragmentClazz != null && h5FragmentManagerClass != null && h5pageClass != null && jsonObjectClass != null && h5RpcUtilClass != null && !finded) {
-                    finded = true;
                     Log.d(TAG, "afterHookedMethod find success");
                     XposedHelpers.findAndHookMethod(h5FragmentManagerClass, "pushFragment", h5FragmentClazz, boolean.class, Bundle.class, boolean.class, boolean.class, new XC_MethodHook() {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                             super.afterHookedMethod(param);
                             CollectHelper.curH5Fragment = param.args[0];
+                            finded = true;
                             Log.d(TAG, "afterHookedMethod curH5Fragment: " + param.args[0].toString());
                         }
                     });
@@ -89,17 +144,14 @@ public class AntCollect implements IXposedHookLoadPackage {
                                 @Override
                                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                                     super.afterHookedMethod(param);
-                                    Object resp = param.getResult();
-                                    if (resp != null) {
-                                        Method method = resp.getClass().getMethod("getResponse", new Class<?>[]{});
-                                        String response = (String) method.invoke(resp, new Object[]{});
-                                        Log.d(TAG, "afterHookedMethod response: " + response);
-                                        if (CollectHelper.isRankList(response)) {
-                                            CollectHelper.autoGetCanCollectUserIdList(response);
-                                        }
-                                        if (CollectHelper.isUserDetail(response)) {
-                                            CollectHelper.autoGetCanCollectBubbleIdList(response);
-                                        }
+                                    if(!finded){
+                                        Message message = handler.obtainMessage(0x123);
+                                        message.obj = param.getResult();
+                                        handler.sendMessage(message);
+                                    }else {
+                                        Message message = handler.obtainMessage(0x124);
+                                        message.obj = param.getResult();
+                                        handler.sendMessage(message);
                                     }
                                 }
                             });
@@ -110,39 +162,5 @@ public class AntCollect implements IXposedHookLoadPackage {
         });
         final ClassLoader loader = lpparam.classLoader;
 
-
-//        Class<?> h5PageClazz = loader.loadClass("com.alipay.mobile.h5container.api.H5Page");
-//        Class<?> jsonClazz = loader.loadClass("com.alibaba.fastjson.JSONObject");
-//        Class<?> rpcClazz = loader.loadClass("com.alipay.mobile.nebulabiz.rpc.H5RpcUtil");
-//        if (rpcClazz !=null&&jsonClazz!=null && h5PageClazz!=null){
-//            XposedHelpers.findAndHookMethod(rpcClazz, "rpcCall", String.class, String.class, String.class, boolean.class, jsonClazz, String.class, boolean.class, h5PageClazz, int.class, String.class, boolean.class, int.class, new XC_MethodHook() {
-//                @Override
-//                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-//                    super.beforeHookedMethod(param);
-//                    for (int i =0;i<param.args.length;i++){
-//                        Log.d(TAG, "beforeHookedMethod args["+i+"]:"+param.args[i]);
-//                        Log.d(TAG, "beforeHookedMethod result: "+param.getResult());
-//                        Log.d(TAG, "beforeHookedMethod rpc obj: "+param.thisObject);
-//                    }
-//                }
-//
-//                @Override
-//                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-//                    super.afterHookedMethod(param);
-//                    Object resp = param.getResult();
-//                    if (resp != null){
-//                        Method method = resp.getClass().getMethod("getResponse",new Class<?>[]{});
-//                        String response = (String) method.invoke(resp,new Object[]{});
-//                        Log.d(TAG, "afterHookedMethod response: "+response);
-//                        if (CollectHelper.isRankList(response)){
-//                            CollectHelper.autoGetCanCollectUserIdList(loader,response);
-//                        }
-//                        if (CollectHelper.isUserDetail(response)){
-//                            CollectHelper.autoGetCanCollectBubbleIdList(loader,response);
-//                        }
-//                    }
-//                }
-//            });
-//        }
     }
 }
