@@ -33,17 +33,14 @@ public class AntCollect implements IXposedHookLoadPackage {
     private boolean finded = false;
     private ArrayList<Object> responses = new ArrayList<>();
 
-    private boolean isInit = true;
-
-    private Handler handler ;
 
     private void handleResponse () throws Throwable{
-        Log.d(TAG, "handleResponse");
         for (Object resp : responses){
             if (resp != null) {
+                Log.d(TAG, "handleResponse name:"+resp.getClass().getSimpleName()+" content:"+resp.toString());
                 Method method = resp.getClass().getMethod("getResponse", new Class<?>[]{});
                 String response = (String) method.invoke(resp, new Object[]{});
-                Log.d(TAG, "afterHookedMethod response: " + response);
+                Log.d(TAG, "handleResponse afterHookedMethod response: " + response);
                 if (CollectHelper.isRankList(response)) {
                     CollectHelper.autoGetCanCollectUserIdList(response);
                 }
@@ -57,33 +54,6 @@ public class AntCollect implements IXposedHookLoadPackage {
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
-        if (isInit){
-            isInit = false;
-            HandlerThread handlerThread = new HandlerThread("sxf");
-            handler = new Handler(handlerThread.getLooper(),new Handler.Callback() {
-                @Override
-                public boolean handleMessage(Message msg) {
-                    switch (msg.what){
-                        case 0x123:
-                            responses.add(msg.obj);
-                            break;
-                        case 0x124://signal of fragment is loaded properly
-                            responses.add(msg.obj);
-                            try {
-                                handleResponse();
-                            } catch (Throwable throwable) {
-                                throwable.printStackTrace();
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                    return false;
-                }
-            });
-            handlerThread.start();
-        }
-
         if (!lpparam.packageName.contains(ALI_PACKAGE))
             return;
         XposedHelpers.findAndHookMethod(ClassLoader.class, "loadClass", String.class, new XC_MethodHook() {
@@ -114,12 +84,12 @@ public class AntCollect implements IXposedHookLoadPackage {
                 //获取必要的类，来获取界面fragment的实例，以便获取最终需要rcpcall需要的H5PageImpl参数
                 if (h5FragmentClazz != null && h5FragmentManagerClass != null && h5pageClass != null && jsonObjectClass != null && h5RpcUtilClass != null && !finded) {
                     Log.d(TAG, "afterHookedMethod find success");
+                    finded = true;
                     XposedHelpers.findAndHookMethod(h5FragmentManagerClass, "pushFragment", h5FragmentClazz, boolean.class, Bundle.class, boolean.class, boolean.class, new XC_MethodHook() {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                             super.afterHookedMethod(param);
                             CollectHelper.curH5Fragment = param.args[0];
-                            finded = true;
                             Log.d(TAG, "afterHookedMethod curH5Fragment: " + param.args[0].toString());
                         }
                     });
@@ -144,14 +114,11 @@ public class AntCollect implements IXposedHookLoadPackage {
                                 @Override
                                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                                     super.afterHookedMethod(param);
-                                    if(!finded){
-                                        Message message = handler.obtainMessage(0x123);
-                                        message.obj = param.getResult();
-                                        handler.sendMessage(message);
-                                    }else {
-                                        Message message = handler.obtainMessage(0x124);
-                                        message.obj = param.getResult();
-                                        handler.sendMessage(message);
+                                    Log.d(TAG, "afterHookedMethod response come in: ");
+                                    Object res = param.getResult();
+                                    responses.add(res);
+                                    if(finded){//只有页面完全加载好才开始处理请求
+                                        handleResponse();
                                     }
                                 }
                             });
