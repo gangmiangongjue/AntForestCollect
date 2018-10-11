@@ -1,9 +1,8 @@
 package de.robv.android.xposed.mods.mayiforest.bean;
-
-import java.util.ArrayList;
+import java.util.List;
 
 public class RankingBean {
-    private ArrayList<FriendRankInfo> friendRanking = new ArrayList<>();
+    private List<FriendRankInfo> friendRanking;
     private boolean hasMore;
     private long queryTimestamp;
     private String resultCode;
@@ -13,11 +12,11 @@ public class RankingBean {
     private FriendRankInfo myself;
     private String nextStartPoint;
 
-    public ArrayList<FriendRankInfo> getFriendRankInfos() {
+    public List<FriendRankInfo> getFriendRankInfos() {
         return friendRanking;
     }
 
-    public void setFriendRankInfos(ArrayList<FriendRankInfo> friendRankBeans) {
+    public void setFriendRankInfos(List<FriendRankInfo> friendRankBeans) {
         this.friendRanking = friendRankBeans;
     }
 
@@ -71,7 +70,7 @@ public class RankingBean {
 
     @Override
     public String toString() {
-        return "hasMore:"+hasMore+" queryTimestamp:"+queryTimestamp+" resultCode:"+resultCode+" resultDesc:"+resultDesc+" retriable:"+retriable+" success:"+success+" friendRankBeans size:"+friendRanking.size();
+        return "hasMore:"+hasMore+" queryTimestamp:"+queryTimestamp+" resultCode:"+resultCode+" resultDesc:"+resultDesc+" retriable:"+retriable+" success:"+success+" friendRankBeans size:"+(friendRanking==null?0:friendRanking.size());
     }
 
     public FriendRankInfo getMyself() {

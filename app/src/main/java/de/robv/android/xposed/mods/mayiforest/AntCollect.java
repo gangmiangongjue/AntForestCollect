@@ -26,18 +26,21 @@ public class AntCollect implements IXposedHookLoadPackage {
     private final static String HOOK_CLASS_H5FRAGMENTMANAGER = "com.alipay.mobile.nebulacore.ui.H5FragmentManager";
     public final static String HOOK_CLASS_H5PAGE = "com.alipay.mobile.h5container.api.H5Page";
     private final static String HOOK_CLASS_JSONOBJECT = "com.alibaba.fastjson.JSONObject";
+    private final static String HOOK_CLASS_H5RESPONSE = "com.alipay.mobile.nebulabiz.rpc.H5Response";
 
 
-    public static Class<?> h5FragmentManagerClass, h5FragmentClazz, h5pageClass, jsonObjectClass, h5RpcUtilClass;
+    public static Class<?> h5FragmentManagerClass, h5FragmentClazz, h5pageClass, jsonObjectClass, h5RpcUtilClass,h5ResponseClass;
 
     private boolean finded = false;
     private ArrayList<Object> responses = new ArrayList<>();
+
+    private Object mLock = new Object();
 
 
     private void handleResponse () throws Throwable{
         for (Object resp : responses){
             if (resp != null) {
-                Log.d(TAG, "handleResponse name:"+resp.getClass().getSimpleName()+" content:"+resp.toString());
+                Log.d(TAG, "handleResponse name:"+resp.getClass().getSimpleName()+"  content:"+resp.toString());
                 Method method = resp.getClass().getMethod("getResponse", new Class<?>[]{});
                 String response = (String) method.invoke(resp, new Object[]{});
                 Log.d(TAG, "handleResponse afterHookedMethod response: " + response);
@@ -78,6 +81,8 @@ public class AntCollect implements IXposedHookLoadPackage {
                     case HOOK_CLASS_RPC:
                         h5RpcUtilClass = clazz;
                         break;
+                    case HOOK_CLASS_H5RESPONSE:
+                        h5ResponseClass = clazz;
                     default:
                         break;
                 }
@@ -90,7 +95,7 @@ public class AntCollect implements IXposedHookLoadPackage {
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                             super.afterHookedMethod(param);
                             CollectHelper.curH5Fragment = param.args[0];
-                            Log.d(TAG, "afterHookedMethod curH5Fragment: " + param.args[0].toString());
+                            Log.d(TAG, "afterHookedMethod curH5Fragment: " + CollectHelper.curH5Fragment);
                         }
                     });
                 }
@@ -114,12 +119,17 @@ public class AntCollect implements IXposedHookLoadPackage {
                                 @Override
                                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                                     super.afterHookedMethod(param);
-                                    Log.d(TAG, "afterHookedMethod response come in: ");
-                                    Object res = param.getResult();
-                                    responses.add(res);
-                                    if(finded){//只有页面完全加载好才开始处理请求
-                                        handleResponse();
+                                    synchronized (mLock){
+                                        Log.d(TAG, "afterHookedMethod response come in: "+param.getResult());
+                                        Object res = param.getResult();
+                                        Log.d(TAG, "afterHookedMethod response is String: "+ (res instanceof String));
+                                        if ( !(res  instanceof String))
+                                            responses.add(res);
+                                        if(finded){//只有页面完全加载好才开始处理请求
+                                            handleResponse();
+                                        }
                                     }
+
                                 }
                             });
                         }

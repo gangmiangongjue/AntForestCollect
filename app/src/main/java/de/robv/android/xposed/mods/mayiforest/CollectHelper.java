@@ -22,7 +22,7 @@ public class CollectHelper {
     private static ArrayList<String> friendRankUserIdList = new ArrayList<>();
     private final static String FIELD_FRIEND_RANK = "friendRanking";
     private static int pageCount = 0;
-    public static Object curH5Fragment;
+    static Object curH5Fragment;
     private static Object curH5PageImpl;
     private static Gson gson = new Gson();
 
@@ -32,7 +32,7 @@ public class CollectHelper {
                 return;
             }
             boolean isFinish = parseFriendRankPageDataResponse(response);
-            if (isFinish){
+            if (!isFinish){
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -44,6 +44,7 @@ public class CollectHelper {
                     for (String userId : friendRankUserIdList){
                         rpcCallCanCollectEnergy(userId);
                     }
+                    friendRankUserIdList.clear();
                 }
             }
             refreshWebview();
@@ -78,7 +79,7 @@ public class CollectHelper {
      * 根据指定userid获取该用户的能量信息
      * */
     private static void rpcCallCanCollectEnergy(String userId){
-        Log.d(TAG, "rpcCallCanCollectEnergy useid: "+userId+" size:"+friendRankUserIdList.size());
+        Log.d(TAG, "rpcCallCanCollectEnergy useid: "+userId+" size:"+friendRankUserIdList.size()+"curH5PageImpl:"+curH5PageImpl);
         try{
             Method rpcCallMethod = getRpcCallMethod();
             if (rpcCallMethod ==null) return;
@@ -126,7 +127,7 @@ public class CollectHelper {
      * 如果当前response是排名的（包括刚进入和后来刷新的），解析并把所有的userid保存起来
      * */
     public static boolean isRankList(String response){
-//        Log.d(TAG, "isRankList: "+response);
+        Log.d(TAG, "isRankList: "+response);
         return response.contains(FIELD_FRIEND_RANK);
     }
     /**
@@ -138,13 +139,14 @@ public class CollectHelper {
     }
 
     private static boolean parseFriendRankPageDataResponse(String response){
-        RankingBean rankingBean = gson.fromJson(response,new TypeToken<RankingBean>(){}.getType());
+        RankingBean rankingBean = gson.fromJson(response,RankingBean.class);
         for (FriendRankInfo rankInfo :rankingBean.getFriendRankInfos()){
             if (!friendRankUserIdList.contains(rankInfo.getUserId()))
             friendRankUserIdList.add(rankInfo.getUserId());
         }
         Log.d(TAG, "parseFriendRankPageDataResponse: "+rankingBean);
-        return !rankingBean.getHasMore();
+//        return !rankingBean.getHasMore();
+        return true;//请求会有问题
     }
 
     private static boolean parseCollectEnergyResponse(String response){
@@ -160,6 +162,7 @@ public class CollectHelper {
     private static Method getRpcCallMethod(){
         Method result = null;
         try {
+            Log.d(TAG, "getRpcCallMethod curH5Fragment: " + CollectHelper.curH5Fragment);
             Field aF = curH5Fragment.getClass().getDeclaredField("a");
             aF.setAccessible(true);
             Object viewHolder = aF.get(curH5Fragment);
