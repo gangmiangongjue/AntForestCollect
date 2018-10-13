@@ -44,7 +44,7 @@ public class CollectHelper {
                     for (String userId : friendRankUserIdList){
                         rpcCallCanCollectEnergy(userId);
                     }
-                    friendRankUserIdList.clear();
+//                    friendRankUserIdList.clear();
                 }
             }
             refreshWebview();
@@ -79,7 +79,7 @@ public class CollectHelper {
      * 根据指定userid获取该用户的能量信息
      * */
     private static void rpcCallCanCollectEnergy(String userId){
-        Log.d(TAG, "rpcCallCanCollectEnergy useid: "+userId+" size:"+friendRankUserIdList.size()+"curH5PageImpl:"+curH5PageImpl);
+        Log.d(TAG, "rpcCallCanCollectEnergy userid: "+userId+" size:"+friendRankUserIdList.size()+"curH5PageImpl:"+curH5PageImpl);
         try{
             Method rpcCallMethod = getRpcCallMethod();
             if (rpcCallMethod ==null) return;
@@ -87,13 +87,14 @@ public class CollectHelper {
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("av","5");
             jsonObject.put("ct","android");
-            jsonObject.put("pageSize",3);
-            jsonObject.put("startIndex",0);
             jsonObject.put("userId",userId);
             jsonArray.put(jsonObject);
             rpcCallMethod.invoke(null,"alipay.antmember.forest.h5.queryNextAction",jsonArray.toString(),"",true,null,null,false,curH5PageImpl,0,"",false,-1);
+            jsonObject.put("pageSize",3);
+            jsonObject.put("startIndex",0);
             rpcCallMethod.invoke(null,"alipay.antmember.forest.h5.pageQueryDynamics",jsonArray.toString(),"",true,null,null,false,curH5PageImpl,0,"",false,-1);
         }catch (Exception e){
+            Log.d(TAG, "rpcCallCanCollectEnergy: "+ e.getMessage()+"    cause by:"+e.getCause());
             e.printStackTrace();
         }
     }
@@ -128,7 +129,7 @@ public class CollectHelper {
      * */
     public static boolean isRankList(String response){
         Log.d(TAG, "isRankList: "+response);
-        return response.contains(FIELD_FRIEND_RANK);
+        return response.contains(FIELD_FRIEND_RANK)&&friendRankUserIdList.isEmpty();
     }
     /**
      * 用户的详细能量情况
@@ -139,6 +140,7 @@ public class CollectHelper {
     }
 
     private static boolean parseFriendRankPageDataResponse(String response){
+        Log.d(TAG, "parseFriendRankPageDataResponse start");
         RankingBean rankingBean = gson.fromJson(response,RankingBean.class);
         for (FriendRankInfo rankInfo :rankingBean.getFriendRankInfos()){
             if (!friendRankUserIdList.contains(rankInfo.getUserId()))

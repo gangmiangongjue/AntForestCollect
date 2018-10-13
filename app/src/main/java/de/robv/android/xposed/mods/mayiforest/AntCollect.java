@@ -24,17 +24,17 @@ public class AntCollect implements IXposedHookLoadPackage {
     private final static String HOOK_CLASS_RPC = "com.alipay.mobile.nebulabiz.rpc.H5RpcUtil";
     private final static String HOOK_CLASS_H5FRAGMENT = "com.alipay.mobile.nebulacore.ui.H5Fragment";
     private final static String HOOK_CLASS_H5FRAGMENTMANAGER = "com.alipay.mobile.nebulacore.ui.H5FragmentManager";
-    public final static String HOOK_CLASS_H5PAGE = "com.alipay.mobile.h5container.api.H5Page";
+    private final static String HOOK_CLASS_H5PAGE = "com.alipay.mobile.h5container.api.H5Page";
     private final static String HOOK_CLASS_JSONOBJECT = "com.alibaba.fastjson.JSONObject";
     private final static String HOOK_CLASS_H5RESPONSE = "com.alipay.mobile.nebulabiz.rpc.H5Response";
 
 
-    public static Class<?> h5FragmentManagerClass, h5FragmentClazz, h5pageClass, jsonObjectClass, h5RpcUtilClass,h5ResponseClass;
+    static Class<?> h5FragmentManagerClass, h5FragmentClazz, h5pageClass, jsonObjectClass, h5RpcUtilClass,h5ResponseClass;
 
     private boolean finded = false;
     private ArrayList<Object> responses = new ArrayList<>();
 
-    private Object mLock = new Object();
+    private final  Object mLock = new Object();
 
 
     private void handleResponse () throws Throwable{
@@ -57,8 +57,9 @@ public class AntCollect implements IXposedHookLoadPackage {
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
-        if (!lpparam.packageName.contains(ALI_PACKAGE))
+        if (!lpparam.packageName.equals(ALI_PACKAGE))
             return;
+        Log.d(TAG, "handleLoadPackage package name : "+lpparam.packageName);
         XposedHelpers.findAndHookMethod(ClassLoader.class, "loadClass", String.class, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
@@ -87,7 +88,7 @@ public class AntCollect implements IXposedHookLoadPackage {
                         break;
                 }
                 //获取必要的类，来获取界面fragment的实例，以便获取最终需要rcpcall需要的H5PageImpl参数
-                if (h5FragmentClazz != null && h5FragmentManagerClass != null && h5pageClass != null && jsonObjectClass != null && h5RpcUtilClass != null && !finded) {
+                if (h5FragmentClazz != null && h5FragmentManagerClass != null && !finded) {
                     Log.d(TAG, "afterHookedMethod find success");
                     finded = true;
                     XposedHelpers.findAndHookMethod(h5FragmentManagerClass, "pushFragment", h5FragmentClazz, boolean.class, Bundle.class, boolean.class, boolean.class, new XC_MethodHook() {
@@ -98,6 +99,7 @@ public class AntCollect implements IXposedHookLoadPackage {
                             Log.d(TAG, "afterHookedMethod curH5Fragment: " + CollectHelper.curH5Fragment);
                         }
                     });
+
                 }
 
                 //每次call rpc都会回调该方法，使用这个获得的response来获取需要的朋友和自己的能量信息
@@ -111,16 +113,16 @@ public class AntCollect implements IXposedHookLoadPackage {
                                 @Override
                                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                                     super.beforeHookedMethod(param);
-                                    for (int i = 0; i < param.args.length; i++) {
-                                        Log.d(TAG, "HOOK_CLASS_RPC param[" + i + "]:" + param.args[i]);
-                                    }
+//                                    for (int i = 0; i < param.args.length; i++) {
+//                                        Log.d(TAG, "HOOK_CLASS_RPC param[" + i + "]:" + param.args[i]);
+//                                    }
                                 }
 
                                 @Override
                                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                                     super.afterHookedMethod(param);
                                     synchronized (mLock){
-                                        Log.d(TAG, "afterHookedMethod response come in: "+param.getResult());
+                                        Log.d(TAG, "afterHookedMethod response come in: "+param.getResult()+"thread id:"+Thread.currentThread().getId());
                                         Object res = param.getResult();
                                         Log.d(TAG, "afterHookedMethod response is String: "+ (res instanceof String));
                                         if ( !(res  instanceof String))
@@ -137,7 +139,5 @@ public class AntCollect implements IXposedHookLoadPackage {
                 }
             }
         });
-        final ClassLoader loader = lpparam.classLoader;
-
     }
 }
